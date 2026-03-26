@@ -3,12 +3,14 @@
 import dotenv
 import argparse
 from src.config import Configuration
-from maikol_utils.other_utils import args_to_config
+from maikol_utils.other_utils import args_to_dataclass
+from scripts import get_transcriptions
 
-def cmd_read_extract(args: argparse.Namespace):
-    """Call read_extract_from_config_list with the given args."""
-    CONFIG: Configuration = args_to_config(args)
-    ...
+
+def cmd_get_transcriptions(args: argparse.Namespace):
+    """Call get_transcriptions with the given args."""
+    CONFIG: Configuration = args_to_dataclass(args, Configuration)
+    get_transcriptions(CONFIG)
 
 def cmd_test(args):
     """Call test functions."""
@@ -26,23 +28,14 @@ if __name__ == "__main__":
     subparsers = parser.add_subparsers(dest="function", required=True)
 
     # ======================================================================================
-    #                                       read_extract
+    #                                       get_transcriptions
     # ======================================================================================
-    p_read = subparsers.add_parser("read-extract", help="Read and extract from config list")
-    p_read.add_argument(
-        "-d", "--dataset_name", type=str, default="Nuelas", help="Name of raw data folder"
-    )
-    p_read.add_argument("-m", "--max_files", type=int, default=None, help="Max files to load")
-    p_read.add_argument(
-        "-l", "--use_llm", action="store_false", default=True, help="Disable LLM extraction"
-    )
-    p_read.set_defaults(func=cmd_read_extract)
+    p_transcriptions = subparsers.add_parser("get-transcriptions", help="Get transcriptions for videos")
+    
+    p_transcriptions.add_argument("-b", "--batch-size", type=int, default=16, help="Batch size for transcription (default: 16)")
 
-    # ======================================================================================
-    #                                       test
-    # ======================================================================================
-    p_test = subparsers.add_parser("test", help="Test script with any code")
-    p_test.set_defaults(func=cmd_test)
+    p_transcriptions.set_defaults(func=cmd_get_transcriptions)
+
 
     # ======================================================================================
     #                                       CALL

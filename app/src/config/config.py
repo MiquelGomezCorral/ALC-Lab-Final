@@ -3,28 +3,27 @@
 Configuration of project variables that we want to have available
 everywhere and considered configuration.
 """
-# import os
-import dataclasses
+import os
 from dataclasses import dataclass
-from argparse import Namespace
 
 @dataclass 
 class Configuration:
     """Configuration class for the project."""
+    DATA_PATH: str = os.path.join("..", "data")
+    MODEL_PATH: str = os.path.join("..", "models")
+    LOGS_PATH: str = os.path.join("..", "logs")
+
+
+    videos_path: str = os.path.join(DATA_PATH, "EXIST 2026 Videos Dataset", "training", "videos")
+    videos_data: str = os.path.join(DATA_PATH, "EXIST 2026 Videos Dataset", "training", "EXIST2026_training.json")
+    transcriptions_path: str = os.path.join(DATA_PATH, "EXIST 2026 Videos Dataset", "training", "transcriptions.json")
+
+
+
 
     exp_name: str = "base_name"
     seed:     int = 42
-
-    gym_id:          str = None
-    learning_rate: float = 2.5e-4
-    total_timesteps: int = 25_000
-
-    torch_deterministic: bool = True
-    cuda:                bool = True
-
-    track_run:         bool = False
-    wandb_project_name: str = "RL"
-    wandb_entity:       str = None
+    batch_size: int = 16
 
     def __post_init__(self):
         ...
