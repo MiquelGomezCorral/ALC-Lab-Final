@@ -4,7 +4,8 @@ import os
 from maikol_utils.file_utils import list_dir_files, load_json, save_json
 from maikol_utils.file_utils import print_error
 from tqdm import tqdm
-import whisperx
+# import whisperx
+
 
 from src.config import Configuration
 
