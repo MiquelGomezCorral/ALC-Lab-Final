@@ -45,7 +45,7 @@ def get_transcriptions(CONFIG: Configuration) -> str:
     if errors:
         print_error(f"Errors occurred for {len(errors)} videos: {errors}")
 
-    save_json(transcriptions, CONFIG.transcriptions_path)
+    save_json(CONFIG.transcriptions_path, transcriptions)
 
 
 def extract_transcription(model, video_path, language="en", batch_size=16):
