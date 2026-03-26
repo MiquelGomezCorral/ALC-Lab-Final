@@ -1,1 +1,2 @@
 from .get_transcription import get_transcriptions
+from .get_ocr import get_ocr_transcriptions

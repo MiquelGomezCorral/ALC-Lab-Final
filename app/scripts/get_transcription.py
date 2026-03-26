@@ -1,5 +1,7 @@
 
-from maikol_utils.file_utils import list_dir_files, save_json
+import os
+
+from maikol_utils.file_utils import list_dir_files, load_json, save_json
 from maikol_utils.file_utils import print_error
 from tqdm import tqdm
 import whisperx
@@ -16,7 +18,8 @@ def get_transcriptions(CONFIG: Configuration) -> str:
     Returns:
         str: The transcription of the video.
     """
-    files, n = list_dir_files(CONFIG.videos_path)#, max_files=10)
+    # files, n = list_dir_files(CONFIG.videos_path)#, max_files=10)
+    metadata = load_json(CONFIG.videos_data)
 
     device = "cuda" 
     compute_type = "float32" 
@@ -24,14 +27,20 @@ def get_transcriptions(CONFIG: Configuration) -> str:
 
     transcriptions = {}
     errors = []
-    for f in tqdm(files, desc="Processing videos"):
-        transcription = extract_transcription(model, f, CONFIG.batch_size)
+    for data in tqdm(metadata.values(), desc="Processing videos"):
+        video_path = os.path.join(CONFIG.videos_path, data["video"])
+        transcription = extract_transcription(
+            model, 
+            video_path, 
+            language=data.get("lang", "en"), 
+            batch_size=CONFIG.batch_size
+        )
         try:
-            transcriptions[f] = transcription[0]["text"]
+            transcriptions[video_path] = transcription[0]["text"]
         except IndexError:
-            transcriptions[f] = ""
-            print_error(f"Transcription for {f} is empty. Setting it to an empty string.")
-            errors.append(f)
+            transcriptions[video_path] = ""
+            # print_error(f"Transcription for {video_path} is empty. Setting it to an empty string.")
+            errors.append(video_path)
 
     if errors:
         print_error(f"Errors occurred for {len(errors)} videos: {errors}")
@@ -39,9 +48,9 @@ def get_transcriptions(CONFIG: Configuration) -> str:
     save_json(transcriptions, CONFIG.transcriptions_path)
 
 
-def extract_transcription(model, video_path, batch_size=16):
+def extract_transcription(model, video_path, language="en", batch_size=16):
     audio = whisperx.load_audio(video_path)
     
-    result = model.transcribe(audio, batch_size=batch_size)
+    result = model.transcribe(audio, batch_size=batch_size, language=language)
     
     return result["segments"]

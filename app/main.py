@@ -4,13 +4,18 @@ import dotenv
 import argparse
 from src.config import Configuration
 from maikol_utils.other_utils import args_to_dataclass
-from scripts import get_transcriptions
+from scripts import get_transcriptions, get_ocr_transcriptions
 
 
 def cmd_get_transcriptions(args: argparse.Namespace):
     """Call get_transcriptions with the given args."""
     CONFIG: Configuration = args_to_dataclass(args, Configuration)
     get_transcriptions(CONFIG)
+
+def cmd_get_ocr(args):
+    """Call get_ocr_transcriptions with the given args."""
+    CONFIG: Configuration = args_to_dataclass(args, Configuration)
+    get_ocr_transcriptions(CONFIG)
 
 def cmd_test(args):
     """Call test functions."""
@@ -36,6 +41,14 @@ if __name__ == "__main__":
 
     p_transcriptions.set_defaults(func=cmd_get_transcriptions)
 
+    # ======================================================================================
+    #                                       get_ocr
+    # ======================================================================================
+    p_ocr = subparsers.add_parser("get-ocr", help="Get OCR results for videos")
+    
+    p_ocr.add_argument("-b", "--batch-size", type=int, default=16, help="Batch size for OCR (default: 16)")
+
+    p_ocr.set_defaults(func=cmd_get_ocr)
 
     # ======================================================================================
     #                                       CALL
