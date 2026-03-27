@@ -4,7 +4,7 @@ import dotenv
 import argparse
 from src.config import Configuration
 from maikol_utils.other_utils import args_to_dataclass
-from scripts import get_transcriptions, get_ocr_transcriptions
+from scripts import get_transcriptions, get_ocr_transcriptions, get_extra_sounds
 
 
 def cmd_get_transcriptions(args: argparse.Namespace):
@@ -16,6 +16,11 @@ def cmd_get_ocr(args):
     """Call get_ocr_transcriptions with the given args."""
     CONFIG: Configuration = args_to_dataclass(args, Configuration)
     get_ocr_transcriptions(CONFIG)
+
+def cmd_get_extra_sounds(args):
+    """Call get_extra_sounds with the given args."""
+    CONFIG: Configuration = args_to_dataclass(args, Configuration)
+    get_extra_sounds(CONFIG)
 
 def cmd_test(args):
     """Call test functions."""
@@ -49,6 +54,12 @@ if __name__ == "__main__":
     p_ocr.add_argument("-b", "--batch-size", type=int, default=16, help="Batch size for OCR (default: 16)")
 
     p_ocr.set_defaults(func=cmd_get_ocr)
+
+    # ======================================================================================
+    #                                       get_extra_sounds
+    # ======================================================================================
+    p_extra_sounds = subparsers.add_parser("get-extra-sounds", help="Get extra sound features for videos")
+    p_extra_sounds.set_defaults(func=cmd_get_extra_sounds)
 
     # ======================================================================================
     #                                       CALL
