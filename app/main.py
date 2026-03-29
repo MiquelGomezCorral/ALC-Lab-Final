@@ -4,7 +4,7 @@ import dotenv
 import argparse
 from src.config import Configuration
 from maikol_utils.other_utils import args_to_dataclass
-from scripts import get_transcriptions, get_ocr_transcriptions, get_extra_sounds
+from scripts import get_transcriptions, get_ocr_transcriptions, get_extra_sounds, train_test_mostro
 
 
 def cmd_get_transcriptions(args: argparse.Namespace):
@@ -21,6 +21,11 @@ def cmd_get_extra_sounds(args):
     """Call get_extra_sounds with the given args."""
     CONFIG: Configuration = args_to_dataclass(args, Configuration)
     get_extra_sounds(CONFIG)
+
+def cmd_train_mostro(args):
+    CONFIG: Configuration = args_to_dataclass(args, Configuration)
+    train_test_mostro(CONFIG)
+
 
 def cmd_test(args):
     """Call test functions."""
@@ -60,6 +65,16 @@ if __name__ == "__main__":
     # ======================================================================================
     p_extra_sounds = subparsers.add_parser("get-extra-sounds", help="Get extra sound features for videos")
     p_extra_sounds.set_defaults(func=cmd_get_extra_sounds)
+
+    # ======================================================================================
+    #                                       train_mostro
+    # ======================================================================================
+    p_mostro = subparsers.add_parser("get-train", help="Train mostro model")
+    
+    p_mostro.add_argument("-b", "--batch-size", type=int, default=16, help="Batch size for training (default: 16)")
+
+    p_mostro.set_defaults(func=cmd_train_mostro)
+
 
     # ======================================================================================
     #                                       CALL
