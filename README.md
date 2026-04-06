@@ -1,5 +1,4 @@
 # General Python Project Template
-
 [English](#english) | [Español](#español)
 
 ---
