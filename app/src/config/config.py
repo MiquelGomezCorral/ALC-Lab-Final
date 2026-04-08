@@ -14,12 +14,13 @@ class Configuration:
     LOGS_PATH: str = os.path.join("..", "logs")
 
 
-    videos_path: str = os.path.join(DATA_PATH, "EXIST 2026 Videos Dataset", "training", "videos")
-    videos_data: str = os.path.join(DATA_PATH, "EXIST 2026 Videos Dataset", "training", "EXIST2026_training.json")
-    metadata_path: str = os.path.join(DATA_PATH, "EXIST 2026 Videos Dataset", "training", "metadata.json")
-    transcriptions_path: str = os.path.join(DATA_PATH, "EXIST 2026 Videos Dataset", "training", "transcriptions.json")
-    ocr_path: str = os.path.join(DATA_PATH, "EXIST 2026 Videos Dataset", "training", "ocr_results.json")
-    extra_sounds_path: str = os.path.join(DATA_PATH, "EXIST 2026 Videos Dataset", "training", "extra_sounds.json")
+    full_dataset_path: str = os.path.join(DATA_PATH, "EXIST 2026 Videos Dataset", "training")
+    videos_path: str = os.path.join(full_dataset_path, "videos")
+    videos_data: str = os.path.join(full_dataset_path, "EXIST2026_training.json")
+    metadata_path: str = os.path.join(full_dataset_path, "metadata.json")
+    transcriptions_path: str = os.path.join(full_dataset_path, "transcriptions.json")
+    ocr_path: str = os.path.join(full_dataset_path, "ocr_results.json")
+    extra_sounds_path: str = os.path.join(full_dataset_path, "extra_sounds.json")
 
 
 
