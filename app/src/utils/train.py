@@ -1,12 +1,15 @@
 import os
 import torch
 from tqdm import tqdm
+from collections import Counter
 from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.utils.data import WeightedRandomSampler, DataLoader
 
-from src.data.meme_dataset import MemeDataset
+from src.data.meme_dataset import MemeDataset, collate_fn
 from src.models.model import MultimodalModel
 from src.models.loss import SoftLabelLoss
 from src.utils.evaluate import evaluate, EarlyStopping
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -23,20 +26,47 @@ def train(
     phase2_epochs:     int   = 10,
     es_patience:       int   = 4,
     seg_lengths:       list  = [128, 128, 226],
-    num_classes:      int   = 2,
+    num_classes:       int   = 2,
+    label_name:        str   = "label",
+    balanced:          bool  = False,          # ← NUEVO
 ) -> MultimodalModel:
     os.makedirs(save_dir, exist_ok=True)
-    json_path  = os.path.join(save_dir, f"{text_encoder_name}.json")
-    model_path = os.path.join(save_dir,  f"{text_encoder_name}.pt")
+    json_path  = os.path.join(save_dir, f"{text_encoder_name}_{label_name}.json")
+    model_path = os.path.join(save_dir,  f"{text_encoder_name}_{label_name}.pt")
 
     model = MultimodalModel(
-        eeg_dim=eeg_dim, et_hr_dim=et_hr_dim,
+        model_name=text_encoder_name, eeg_dim=eeg_dim, et_hr_dim=et_hr_dim,
         qwen_emb_dim=qwen_emb_dim,
         text_dim=768, num_heads=8, freeze_backbone=True,
         seg_lengths=seg_lengths, num_classes=num_classes
     ).to(device)
 
     criterion = SoftLabelLoss()
+
+    # ── Balanced sampler (opcional) ───────────────────────────────────────
+    if balanced:
+        labels = [int(Counter(train_data[i][label_name]).most_common(1)[0][0]) for i in range(len(train_data))]
+
+        classes, counts = torch.unique(torch.tensor(labels), return_counts=True)
+        weight_per_class = 1.0 / counts.float()
+        sample_weights   = weight_per_class[torch.tensor(labels)]
+        sampler = WeightedRandomSampler(
+            weights     = sample_weights,
+            num_samples = len(sample_weights),
+            replacement = True,
+        )
+        balanced_loader = DataLoader(
+            loader.dataset,
+            batch_size  = loader.batch_size,
+            sampler     = sampler,
+            num_workers = loader.num_workers,
+            pin_memory  = loader.pin_memory,
+            collate_fn  = collate_fn,
+        )
+        active_loader = balanced_loader
+        print(f"[Balanced] Clases: {classes.tolist()}  Counts: {counts.tolist()}")
+    else:
+        active_loader = loader
 
     # ── Fase 1: backbone congelado ────────────────────────────────────────
     print("\n=== FASE 1: backbone congelado ===\n")
@@ -47,7 +77,7 @@ def train(
 
     for epoch in range(phase1_epochs):
         model.train()
-        pbar = tqdm(loader, desc=f"Ph1 {epoch+1}/{phase1_epochs}")
+        pbar = tqdm(active_loader, desc=f"Ph1 {epoch+1}/{phase1_epochs}")
         for batch in pbar:
             optimizer1.zero_grad()
             logits = model(
@@ -77,11 +107,11 @@ def train(
     n          = len(enc_layers)
 
     param_groups = [
-        {"params": model.text_encoder.model.embeddings.parameters(), "lr": 1e-6},   # antes 2e-6
-        *[{"params": l.parameters(), "lr": 1e-6} for l in enc_layers[:n//2]],       # antes 2e-6
-        *[{"params": l.parameters(), "lr": 5e-6} for l in enc_layers[n//2:]],       # antes 1e-5
+        {"params": model.text_encoder.model.embeddings.parameters(), "lr": 1e-6},
+        *[{"params": l.parameters(), "lr": 1e-6} for l in enc_layers[:n//2]],
+        *[{"params": l.parameters(), "lr": 5e-6} for l in enc_layers[n//2:]],
         {"params": [p for name, p in model.named_parameters()
-                    if "text_encoder" not in name], "lr": 5e-6},                    # antes 5e-5
+                    if "text_encoder" not in name], "lr": 5e-6},
     ]
     optimizer2 = torch.optim.AdamW(param_groups, weight_decay=0.05)
     scheduler2 = CosineAnnealingLR(optimizer2, T_max=phase2_epochs, eta_min=1e-8)
@@ -89,11 +119,9 @@ def train(
 
     best_f1 = 0.0
 
-    # ── Dentro del loop de Fase 2 ───────────────────────────────────────────
     for epoch in range(phase2_epochs):
-
         model.train()
-        pbar = tqdm(loader, desc=f"Ph2 {epoch+1}/{phase2_epochs}")
+        pbar = tqdm(active_loader, desc=f"Ph2 {epoch+1}/{phase2_epochs}")
         for batch in pbar:
             optimizer2.zero_grad()
             logits = model(
@@ -115,7 +143,7 @@ def train(
         val_loss, auc, f1, f1_yes = evaluate(model, criterion, val_loader, device, json_path)
         marker = " ← best" if f1 > best_f1 else ""
         best_f1 = max(best_f1, f1)
-        print(f"  → AUC={auc:.4f}  F1={f1:.4f}  F1_yes={f1_yes:.4f}  loss={val_loss:.4f}")
+        print(f"  → AUC={auc:.4f}  F1={f1:.4f}  F1_yes={f1_yes:.4f}  loss={val_loss:.4f}{marker}")
 
         if early_stop.step(f1, model):
             print(f"  [EarlyStopping] Sin mejora en {es_patience} épocas. Parando.")
@@ -163,7 +191,7 @@ def train_transfer(
     es_patience:       int  = 4,
     seg_lengths:       list = [128, 128, 226],
     num_classes:       int=2,
-    label_name:str = "label",
+    label_name: str = "label",
 
 ) -> MultimodalModel:
     """

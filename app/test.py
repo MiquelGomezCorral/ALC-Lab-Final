@@ -20,7 +20,7 @@ REAS_LEN = 256
 
 MAX_SUBJECTS = 4
 NUM_CLASSES = 2
-NAME_LABEL = "label"
+NAME_LABEL = "task1"
 
 SEQ_LEN = [OCR_LEN, TRANS_LEN, REAS_LEN]
 
@@ -71,7 +71,7 @@ def main():
     print(f"EEG dim: {eeg_dim} | ET/HR dim: {et_hr_dim}")
 
     # ── Cargar test ──────────────────────────────────────────────────────────
-    test_data = load_json(os.path.join(DATA_DIR, "val_new.json"))
+    test_data = load_json(os.path.join(DATA_DIR, "val.json"))
 
     test_dataset = MemeDataset(
         test_data,

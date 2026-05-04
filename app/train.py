@@ -62,6 +62,10 @@ def parse_args():
         default="label",
         help="Nombre del campo de etiqueta en el JSON de datos (default: 'label').",
     )
+    parser.add_argument(
+        "--balanced",
+        action="store_true",
+    )
     return parser.parse_args()
 
 
@@ -91,6 +95,7 @@ def main():
     print(f"   Encoder:      {args.text_encoder}")
     print(f"   Num clases:   {args.num_classes}")
     print(f"   Campo label:  {args.label_name}")
+    print(f"   Balanceado:   {args.balanced}")
     if args.mode == "transfer":
         print(f"   Checkpoint:   {args.checkpoint}")
 
@@ -102,8 +107,8 @@ def main():
     print(f"Qwen embeddings cargados: {len(qwen_embeddings)} | dim: {qwen_emb_dim}")
 
     # ── Datos ─────────────────────────────────────────────────────────────────
-    train_data = load_json(os.path.join(DATA_DIR, "train_new.json"))
-    val_data   = load_json(os.path.join(DATA_DIR, "val_new.json"))
+    train_data = load_json(os.path.join(DATA_DIR, "train.json"))
+    val_data   = load_json(os.path.join(DATA_DIR, "val.json"))
     print(f"Train samples: {len(train_data)} | Val samples: {len(val_data)}")
 
     # ── Datasets ──────────────────────────────────────────────────────────────
@@ -157,6 +162,8 @@ def main():
         phase1_epochs=5,
         phase2_epochs=20,
         es_patience=5,
+        label_name=args.label_name,
+        balanced=args.balanced,
     )
 
     if args.mode == "scratch":
