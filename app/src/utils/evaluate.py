@@ -6,23 +6,29 @@ import torch.nn as nn
 from sklearn.metrics import roc_auc_score, f1_score
 
 
-def evaluate(model, criterion, loader, device, save_path=None):
+def evaluate(model, criterion, loader, device, 
+             save_path=None, multilabel=False):
     """
     Evalúa sobre `loader` y devuelve (val_loss, auc, f1_macro, f1_class1).
- 
-    Soporta cualquier número de clases (binario o multiclase).
- 
-    - Pérdida calculada sobre soft_label (consistente con training).
-    - Hard label para métricas: argmax(soft_label).
+
+    Soporta clasificación multiclase y multilabel.
+
+    Multiclase:
+    - Hard label: argmax(soft_label).
     - Predicción: clase con mayor probabilidad tras softmax.
     - AUC: binario estándar si num_classes=2, OvR macro-averaged si >2.
-    - f1_class1: F1 de la clase 1 en binario; F1 macro en multiclase
-      (no hay una única "clase positiva" relevante en ese caso).
-    - Guarda predicciones en JSON solo si f1_macro mejora el registro previo.
+    - f1_class1: F1 de la clase 1 en binario; f1_macro en multiclase.
+
+    Multilabel:
+    - Labels: vector binario desde batch["label"].
+    - Predicción: sigmoid + umbral 0.5 por clase.
+    - AUC: macro-averaged OvR por clase.
+    - f1_class1: f1_macro (no hay una única clase positiva relevante).
+    - Pérdida calculada sobre batch["label"] con BCEWithLogitsLoss.
     """
     model.eval()
     all_probs, all_labels, total_loss = [], [], 0.0
- 
+
     with torch.no_grad():
         for batch in loader:
             logits = model(
@@ -33,47 +39,57 @@ def evaluate(model, criterion, loader, device, save_path=None):
                 eeg_mask       = batch["eeg_mask"].to(device),
                 et_hr          = batch["et_hr"].to(device),
                 et_hr_mask     = batch["et_hr_mask"].to(device),
+                annotator_ids  = batch["annotators"].to(device),
             )
-            soft_labels = batch["soft_label"].to(device)
-            total_loss += criterion(logits, soft_labels).item()
- 
-            probs = torch.softmax(logits, dim=1).cpu().numpy()   # [B, num_classes]
+
+            labels = batch["label"].float().to(device)   # ya es [B, num_classes] one-hot
+            total_loss += criterion(logits, labels).item()
+            probs = torch.sigmoid(logits).cpu().numpy() if multilabel else torch.softmax(logits, dim=1).cpu().numpy()
+            if multilabel:
+                all_labels.extend(labels.cpu().numpy())  # [B, C]
+            else:
+                all_labels.extend(batch["label"].argmax(dim=1).cpu().numpy())  # [B]
             all_probs.extend(probs)
-            all_labels.extend(batch["soft_label"].argmax(dim=1).numpy())
- 
+
     all_probs  = np.array(all_probs)   # [N, num_classes]
-    all_labels = np.array(all_labels)  # [N]
-    preds      = all_probs.argmax(axis=1)  # clase con mayor prob
+    all_labels = np.array(all_labels)  # [N] o [N, num_classes] en multilabel
     num_classes = all_probs.shape[1]
- 
-    # ── AUC ──────────────────────────────────────────────────────────────
-    if num_classes == 2:
-        auc = roc_auc_score(all_labels, all_probs[:, 1])
+
+    if multilabel:
+        preds = (all_probs >= 0.5).astype(int)   # [N, num_classes]
+
+        # AUC por clase, macro-averaged (requiere que cada clase tenga ambos valores)
+        auc = roc_auc_score(all_labels, all_probs, average="macro")
+
+        f1_macro  = f1_score(all_labels, preds, average="macro")
+        f1_class1 = f1_macro   # no hay una única clase positiva relevante
+
     else:
-        # OvR macro-averaged; necesita que todas las clases estén presentes
-        auc = roc_auc_score(
-            all_labels, all_probs,
-            multi_class="ovr",
-            average="macro",
-        )
- 
-    # ── F1 ───────────────────────────────────────────────────────────────
-    f1_macro = f1_score(all_labels, preds, average="macro")
- 
-    if num_classes == 2:
-        f1_class1 = f1_score(all_labels, preds, pos_label=1, average="binary")
-    else:
-        # En multiclase devolvemos el F1 por clase como array informativo
-        # pero el valor escalar de retorno es f1_macro (consistente con EarlyStopping)
-        f1_class1 = f1_macro
- 
+        preds = all_probs.argmax(axis=1)   # [N]
+
+        if num_classes == 2:
+            auc = roc_auc_score(all_labels, all_probs[:, 1])
+        else:
+            auc = roc_auc_score(
+                all_labels, all_probs,
+                multi_class="ovr",
+                average="macro",
+            )
+
+        f1_macro = f1_score(all_labels, preds, average="macro")
+
+        if num_classes == 2:
+            f1_class1 = f1_score(all_labels, preds, pos_label=1, average="binary")
+        else:
+            f1_class1 = f1_macro
+
     # ── Guardado JSON ─────────────────────────────────────────────────────
     if save_path is not None:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         new_metrics = {
-            "auc":      round(float(auc),       4),
-            "f1_macro": round(float(f1_macro),  4),
-            "f1_class1": round(float(f1_class1), 4),
+            "auc":       round(float(auc),        4),
+            "f1_macro":  round(float(f1_macro),   4),
+            "f1_class1": round(float(f1_class1),  4),
         }
         save = True
         if os.path.exists(save_path):
@@ -85,15 +101,15 @@ def evaluate(model, criterion, loader, device, save_path=None):
                 json.dump({
                     "predictions": [
                         {
-                            "label": int(l),
-                            "pred":  int(p),
+                            "label": l.tolist() if multilabel else int(l),
+                            "pred":  p.tolist() if multilabel else int(p),
                             "probs": [round(float(pr), 4) for pr in prob_row],
                         }
                         for l, p, prob_row in zip(all_labels, preds, all_probs)
                     ],
                     "metrics": new_metrics,
                 }, f, indent=2)
- 
+
     return total_loss / len(loader), auc, f1_macro, f1_class1
 
 

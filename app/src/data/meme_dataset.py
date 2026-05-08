@@ -13,12 +13,45 @@ def pad_subjects(subject_list: list, max_subjects: int, feat_dim: int):
     return tensor, mask
 
 
-def votes_to_soft_label(votes: list, num_classes: int = 2) -> torch.Tensor:
-    """[1,1,1,0]  →  tensor([0.25, 0.75])"""
+def votes_to_soft_label(
+    votes: list,
+    num_classes: int,
+    multilabel: bool = False,
+) -> torch.Tensor:
+    """
+    Convierte votos de anotadores en un soft label.
+ 
+    Modo multiclase (multilabel=False):
+        Cada anotador vota UNA clase (int). El soft label es la distribución
+        de frecuencias normalizada → suma 1.
+        Ej: [1, 1, 0]  →  tensor([0.333, 0.667])
+ 
+    Modo multilabel (multilabel=True):
+        Cada anotador vota UNA O VARIAS clases (list[int]). El soft label
+        de cada clase k es la proporción de anotadores que la marcaron →
+        NO suma 1 necesariamente.
+        Ej: [[5],[3],[5,3]]  →  tensor([0., 0., 0., 0.667, 0., 0.667])
+ 
+    Args:
+        votes:       Multiclase → list[int].  Multilabel → list[list[int]].
+        num_classes: Número total de clases (índices 0-based).
+        multilabel:  False = KLDiv mode, True = BCE mode.
+ 
+    Returns:
+        Tensor de shape (num_classes,) con valores en [0, 1].
+    """
     counts = torch.zeros(num_classes)
-    for v in votes:
-        counts[v] += 1
-    return counts / counts.sum()
+ 
+    if multilabel:
+        num_annotators = len(votes)
+        for annotator_votes in votes:
+            for cls in annotator_votes:
+                counts[cls] += 1
+        return counts / num_annotators          # ∈ [0,1], no suma 1
+    else:
+        for v in votes:
+            counts[v] += 1
+        return counts / counts.sum()            # distribución, suma 1
 
 
 class MemeDataset(Dataset):
@@ -36,7 +69,8 @@ class MemeDataset(Dataset):
                   eeg_dim=None, et_hr_dim=None,
              ocr_len=128, trans_len=128, reasoning_len=226,
              max_subjects: int = 4, num_classes: int = 2,
-             name_label: str="label"):          # ← nuevos parámetros
+             name_label: str="label", multilabel: bool = False,
+             training: bool = False, annotators: int = 10):          # ← nuevos parámetros
         self.data          = data
         self.tokenizer     = tokenizer
         self.ocr_len       = ocr_len
@@ -47,6 +81,9 @@ class MemeDataset(Dataset):
         self.max_subjects = max_subjects
         self.num_classes  = num_classes
         self.name_label   = name_label
+        self.multilabel = multilabel
+
+        self.annotators = annotators
 
         first = data[0]["physio"]
         eeg_s = first.get("EEG", [])
@@ -78,6 +115,11 @@ class MemeDataset(Dataset):
             return_tensors="pt",
         )
         return enc["input_ids"].squeeze(0), enc["attention_mask"].squeeze(0)
+    
+    def _to_onehot(self, indices, num_classes: int) -> torch.Tensor:
+        vec = torch.zeros(num_classes)
+        vec[indices] = 1.0
+        return vec
 
     def __len__(self):
         return len(self.data)
@@ -126,7 +168,18 @@ class MemeDataset(Dataset):
         et_hr_seq, et_hr_mask = pad_subjects(et_hr, self.max_subjects, self.et_hr_dim)
 
         # ── 3. Soft label ─────────────────────────────────────────────────
-        soft_label = votes_to_soft_label(sample[self.name_label], num_classes=self.num_classes)
+        if self.multilabel:
+            label = self._to_onehot(sample[self.name_label], self.num_classes)
+        else:
+            label = votes_to_soft_label(
+            votes=sample[self.name_label],
+            num_classes=self.num_classes,
+            multilabel=self.multilabel
+        )
+
+        annotators = torch.zeros(self.annotators)
+        if not self.multilabel:
+            annotators = self._to_onehot(sample["annotators"], self.annotators)
 
         return {
             "input_ids":      input_ids,
@@ -136,7 +189,8 @@ class MemeDataset(Dataset):
             "eeg_mask":       eeg_mask,
             "et_hr":          et_hr_seq,
             "et_hr_mask":     et_hr_mask,
-            "soft_label":     soft_label,
+            "label":     label,
+            "annotators": annotators,
         }
     
 def collate_fn(batch):
@@ -148,5 +202,6 @@ def collate_fn(batch):
         "eeg_mask":       torch.stack([b["eeg_mask"]       for b in batch]),
         "et_hr":          torch.stack([b["et_hr"]          for b in batch]),
         "et_hr_mask":     torch.stack([b["et_hr_mask"]     for b in batch]),
-        "soft_label":     torch.stack([b["soft_label"]     for b in batch]),   # [B, 2]
+        "annotators":     torch.stack([b["annotators"]     for b in batch]),
+        "label":          torch.stack([b["label"]          for b in batch])     # [B]
     }

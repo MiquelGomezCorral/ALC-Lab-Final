@@ -23,6 +23,7 @@ QWEN_EMB_PATH = "../data/EXIST 2026 Videos Dataset/training/video_embeddings_qwe
 BATCH_SIZE_TRAIN = 8
 BATCH_SIZE_VAL   = 16
 NUM_WORKERS      = 4
+NUM_ANNOTATORS = 10
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -66,6 +67,13 @@ def parse_args():
         "--balanced",
         action="store_true",
     )
+
+    parser.add_argument(
+        "--multilabel",
+        action="store_true",
+        help="Si se activa, se trata la tarea como multilabel (BCE) en lugar de multiclase (KLDiv).",
+    )
+
     return parser.parse_args()
 
 
@@ -107,8 +115,12 @@ def main():
     print(f"Qwen embeddings cargados: {len(qwen_embeddings)} | dim: {qwen_emb_dim}")
 
     # ── Datos ─────────────────────────────────────────────────────────────────
-    train_data = load_json(os.path.join(DATA_DIR, "train.json"))
-    val_data   = load_json(os.path.join(DATA_DIR, "val.json"))
+    if args.label_name == "task3":
+        train_data = load_json(os.path.join(DATA_DIR, "train_3.json"))
+        val_data   = load_json(os.path.join(DATA_DIR, "val_3.json"))
+    else:
+        train_data = load_json(os.path.join(DATA_DIR, "train.json"))
+        val_data   = load_json(os.path.join(DATA_DIR, "val.json"))
     print(f"Train samples: {len(train_data)} | Val samples: {len(val_data)}")
 
     # ── Datasets ──────────────────────────────────────────────────────────────
@@ -119,6 +131,8 @@ def main():
         max_subjects=MAX_SUBJECTS,
         num_classes=args.num_classes,
         name_label=args.label_name,
+        multilabel=args.multilabel,
+        annotators=NUM_ANNOTATORS,
     )
     val_dataset = MemeDataset(
         val_data, tokenizer,
@@ -129,6 +143,8 @@ def main():
         max_subjects=MAX_SUBJECTS,
         num_classes=args.num_classes,
         name_label=args.label_name,
+        multilabel=args.multilabel,
+        annotators=NUM_ANNOTATORS,
     )
 
     eeg_dim   = train_dataset.eeg_dim
@@ -164,6 +180,8 @@ def main():
         es_patience=5,
         label_name=args.label_name,
         balanced=args.balanced,
+        multilabel=args.multilabel,
+        annotators = NUM_ANNOTATORS,
     )
 
     if args.mode == "scratch":

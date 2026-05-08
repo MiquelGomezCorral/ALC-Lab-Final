@@ -152,6 +152,7 @@ class MultimodalModel(nn.Module):
         freeze_backbone: bool  = True,
         dropout:         float = 0.1,
         num_classes:     int   = 2,
+        num_annotators: int = 10, 
     ):
         super().__init__()
         multimodal_dim = text_dim * 3   # 2304
@@ -166,7 +167,7 @@ class MultimodalModel(nn.Module):
 
         # Input: multimodal_raw 2304 (no redundancia con qwen ya dentro)
         self.classifier = nn.Sequential(
-            nn.Linear(multimodal_dim, 256),
+            nn.Linear(multimodal_dim + num_annotators, 256),
             nn.LayerNorm(256),
             nn.GELU(),
             nn.Dropout(0.5),
@@ -185,6 +186,7 @@ class MultimodalModel(nn.Module):
         eeg_mask:       torch.Tensor,
         et_hr:          torch.Tensor,
         et_hr_mask:     torch.Tensor,
+        annotator_ids:  torch.Tensor,
     ) -> torch.Tensor:
 
         text_seq   = self.text_encoder.get_sequential_output(input_ids, attention_mask)
@@ -203,4 +205,6 @@ class MultimodalModel(nn.Module):
         # Qwen refina en el espacio completo — devuelve [B, 2304]
         fused = self.qwen_fuse(multimodal_raw, qwen_emb)
 
-        return self.classifier(fused)
+        final_representation = torch.cat([fused, annotator_ids], dim=1)
+
+        return self.classifier(final_representation)
