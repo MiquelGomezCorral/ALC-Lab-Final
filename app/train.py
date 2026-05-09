@@ -74,6 +74,12 @@ def parse_args():
         help="Si se activa, se trata la tarea como multilabel (BCE) en lugar de multiclase (KLDiv).",
     )
 
+    parser.add_argument(
+        "--annotators",
+        action="store_true",
+        help="El modelo utiliza anotadores.",
+    )
+
     return parser.parse_args()
 
 
@@ -182,6 +188,7 @@ def main():
         balanced=args.balanced,
         multilabel=args.multilabel,
         annotators = NUM_ANNOTATORS,
+        annotations= args.annotators
     )
 
     if args.mode == "scratch":

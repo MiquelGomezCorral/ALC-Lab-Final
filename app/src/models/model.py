@@ -152,7 +152,8 @@ class MultimodalModel(nn.Module):
         freeze_backbone: bool  = True,
         dropout:         float = 0.1,
         num_classes:     int   = 2,
-        num_annotators: int = 10, 
+        num_annotators: int = 10,
+        annotation: bool = False, 
     ):
         super().__init__()
         multimodal_dim = text_dim * 3   # 2304
@@ -164,18 +165,30 @@ class MultimodalModel(nn.Module):
 
         # Qwen fusiona directamente sobre multimodal_raw [B, 2304]
         self.qwen_fuse = QwenGatedFusion(qwen_emb_dim, multimodal_dim, text_dim, dropout)
+        self.annotation = annotation
 
-        # Input: multimodal_raw 2304 (no redundancia con qwen ya dentro)
-        self.classifier = nn.Sequential(
-            nn.Linear(multimodal_dim + num_annotators, 256),
-            nn.LayerNorm(256),
-            nn.GELU(),
-            nn.Dropout(0.5),
-            nn.Linear(256, 64),
-            nn.GELU(),
-            nn.Dropout(0.4),
-            nn.Linear(64, num_classes),
-        )
+        if self.annotation:
+            self.classifier = nn.Sequential(
+                nn.Linear(multimodal_dim + num_annotators, 256),
+                nn.LayerNorm(256),
+                nn.GELU(),
+                nn.Dropout(0.5),
+                nn.Linear(256, 64),
+                nn.GELU(),
+                nn.Dropout(0.4),
+                nn.Linear(64, num_classes),
+            )
+        else:
+            self.classifier = nn.Sequential(
+                nn.Linear(multimodal_dim, 256),
+                nn.LayerNorm(256),
+                nn.GELU(),
+                nn.Dropout(0.5),
+                nn.Linear(256, 64),
+                nn.GELU(),
+                nn.Dropout(0.4),
+                nn.Linear(64, num_classes),
+            )
 
     def forward(
         self,
@@ -205,6 +218,9 @@ class MultimodalModel(nn.Module):
         # Qwen refina en el espacio completo — devuelve [B, 2304]
         fused = self.qwen_fuse(multimodal_raw, qwen_emb)
 
-        final_representation = torch.cat([fused, annotator_ids], dim=1)
+        if self.annotation:
+            final_representation = torch.cat([fused, annotator_ids], dim=1)
+        else:
+            final_representation = fused
 
         return self.classifier(final_representation)

@@ -167,31 +167,43 @@ class MemeDataset(Dataset):
         eeg_seq,   eeg_mask   = pad_subjects(eeg_s, self.max_subjects, self.eeg_dim)
         et_hr_seq, et_hr_mask = pad_subjects(et_hr, self.max_subjects, self.et_hr_dim)
 
-        # ── 3. Soft label ─────────────────────────────────────────────────
-        if self.multilabel:
-            label = self._to_onehot(sample[self.name_label], self.num_classes)
-        else:
-            label = votes_to_soft_label(
-            votes=sample[self.name_label],
-            num_classes=self.num_classes,
-            multilabel=self.multilabel
-        )
-
         annotators = torch.zeros(self.annotators)
         if not self.multilabel:
             annotators = self._to_onehot(sample["annotators"], self.annotators)
 
-        return {
-            "input_ids":      input_ids,
-            "attention_mask": attention_mask,            
-            "qwen_emb":       qwen_emb,
-            "eeg":            eeg_seq,
-            "eeg_mask":       eeg_mask,
-            "et_hr":          et_hr_seq,
-            "et_hr_mask":     et_hr_mask,
-            "label":     label,
-            "annotators": annotators,
-        }
+        # ── 3. Soft label ─────────────────────────────────────────────────
+        if self.training:
+            if self.multilabel:
+                label = self._to_onehot(sample[self.name_label], self.num_classes)
+            else:
+                label = votes_to_soft_label(
+                votes=sample[self.name_label],
+                num_classes=self.num_classes,
+                multilabel=self.multilabel
+            )
+
+            return {
+                "input_ids":      input_ids,
+                "attention_mask": attention_mask,            
+                "qwen_emb":       qwen_emb,
+                "eeg":            eeg_seq,
+                "eeg_mask":       eeg_mask,
+                "et_hr":          et_hr_seq,
+                "et_hr_mask":     et_hr_mask,
+                "label":     label,
+                "annotators": annotators,
+            }
+        else:
+            return {
+                    "input_ids":      input_ids,
+                    "attention_mask": attention_mask,            
+                    "qwen_emb":       qwen_emb,
+                    "eeg":            eeg_seq,
+                    "eeg_mask":       eeg_mask,
+                    "et_hr":          et_hr_seq,
+                    "et_hr_mask":     et_hr_mask,
+                    "annotators": annotators,
+                }
     
 def collate_fn(batch):
     return {
@@ -204,4 +216,16 @@ def collate_fn(batch):
         "et_hr_mask":     torch.stack([b["et_hr_mask"]     for b in batch]),
         "annotators":     torch.stack([b["annotators"]     for b in batch]),
         "label":          torch.stack([b["label"]          for b in batch])     # [B]
+    }
+
+def test_collate_fn(batch):
+    return {
+        "input_ids":      torch.stack([b["input_ids"]      for b in batch]),
+        "attention_mask": torch.stack([b["attention_mask"] for b in batch]),
+        "qwen_emb":       torch.stack([b["qwen_emb"]       for b in batch]),
+        "eeg":            torch.stack([b["eeg"]            for b in batch]),
+        "eeg_mask":       torch.stack([b["eeg_mask"]       for b in batch]),
+        "et_hr":          torch.stack([b["et_hr"]          for b in batch]),
+        "et_hr_mask":     torch.stack([b["et_hr_mask"]     for b in batch]),
+        "annotators":     torch.stack([b["annotators"]     for b in batch]),
     }

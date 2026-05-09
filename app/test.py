@@ -85,6 +85,11 @@ def parse_args():
         action="store_true",
         help="Si se activa, se trata la tarea como multilabel (BCE) en lugar de multiclase (KLDiv).",
     )
+    parser.add_argument(
+        "--annotators",
+        action="store_true",
+        help="El modelo utiliza anotadores.",
+    )
     return parser.parse_args()
 
 
@@ -112,6 +117,7 @@ def main():
     print(f"   Num clases:   {args.num_classes}")
     print(f"   Campo label:  {args.label_name}")
     print(f"   Multilabel:   {args.multilabel}")
+    print(f"   Anotadores:    {args.annotators}")
     print(f"   Checkpoint:   {args.checkpoint}")
 
     # ── Tokenizer ─────────────────────────────────────────────────────────────
@@ -191,6 +197,7 @@ def main():
         seg_lengths=SEG_LENGTHS,
         num_classes=args.num_classes,
         num_annotators=NUM_ANNOTATORS,
+        annotation=args.annotators,
     ).to(device)
 
     model.load_state_dict(torch.load(args.checkpoint, map_location=device))
