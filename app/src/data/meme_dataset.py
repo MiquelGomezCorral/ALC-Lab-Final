@@ -84,6 +84,7 @@ class MemeDataset(Dataset):
         self.multilabel = multilabel
 
         self.annotators = annotators
+        self.training   = training
 
         first = data[0]["physio"]
         eeg_s = first.get("EEG", [])
@@ -195,6 +196,7 @@ class MemeDataset(Dataset):
             }
         else:
             return {
+                    "id": str(sample["id"]),
                     "input_ids":      input_ids,
                     "attention_mask": attention_mask,            
                     "qwen_emb":       qwen_emb,
@@ -220,6 +222,7 @@ def collate_fn(batch):
 
 def test_collate_fn(batch):
     return {
+        "id": [b["id"] for b in batch],
         "input_ids":      torch.stack([b["input_ids"]      for b in batch]),
         "attention_mask": torch.stack([b["attention_mask"] for b in batch]),
         "qwen_emb":       torch.stack([b["qwen_emb"]       for b in batch]),
