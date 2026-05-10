@@ -19,6 +19,11 @@ SEG_LENGTHS  = [OCR_LEN, TRANS_LEN, REAS_LEN]
 
 DATA_DIR      = "../data/last_task/"
 QWEN_EMB_PATH = "../data/EXIST 2026 Videos Dataset/training/video_embeddings_qwen3_8b-prompt.pkl"
+EMB_PATH = {
+    "qwen": "../data/EXIST 2026 Videos Dataset/training/video_embeddings_qwen3_8b-prompt.pkl",
+    "ville": "../data/EXIST 2026 Videos Dataset/training/video_embeddings_ville.pkl",
+    "gemma": "../data/EXIST 2026 Videos Dataset/training/video_embeddings_gemma.pkl",
+}
 
 BATCH_SIZE_TRAIN = 8
 BATCH_SIZE_VAL   = 16
@@ -80,6 +85,14 @@ def parse_args():
         help="El modelo utiliza anotadores.",
     )
 
+    parser.add_argument(
+        "--emb_model",
+        type=str,
+        choices=["qwen", "ville", "gemma"],
+        default="qwen",
+        help="Modelo de embeddings a usar (default: qwen).",
+    )
+
     return parser.parse_args()
 
 
@@ -117,8 +130,14 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(args.text_encoder)
 
     # ── Qwen embeddings ───────────────────────────────────────────────────────
+    if args.emb_model == "qwen":
+        QWEN_EMB_PATH = EMB_PATH["qwen"]
+    elif args.emb_model == "ville":
+        QWEN_EMB_PATH = EMB_PATH["ville"]
+    elif args.emb_model == "gemma":
+        QWEN_EMB_PATH = EMB_PATH["gemma"]
     qwen_embeddings, qwen_emb_dim = load_qwen_embeddings(QWEN_EMB_PATH)
-    print(f"Qwen embeddings cargados: {len(qwen_embeddings)} | dim: {qwen_emb_dim}")
+    print(f"{args.emb_model.capitalize()} embeddings cargados: {len(qwen_embeddings)} | dim: {qwen_emb_dim}")
 
     # ── Datos ─────────────────────────────────────────────────────────────────
     if args.label_name == "task3":
@@ -139,6 +158,7 @@ def main():
         name_label=args.label_name,
         multilabel=args.multilabel,
         annotators=NUM_ANNOTATORS,
+        training=True,
     )
     val_dataset = MemeDataset(
         val_data, tokenizer,
@@ -151,6 +171,7 @@ def main():
         name_label=args.label_name,
         multilabel=args.multilabel,
         annotators=NUM_ANNOTATORS,
+        training=True
     )
 
     eeg_dim   = train_dataset.eeg_dim
@@ -182,13 +203,14 @@ def main():
         save_dir=DATA_DIR,
         seg_lengths=SEG_LENGTHS,
         phase1_epochs=5,
-        phase2_epochs=20,
-        es_patience=5,
+        phase2_epochs=100,
+        es_patience=20,
         label_name=args.label_name,
         balanced=args.balanced,
         multilabel=args.multilabel,
         annotators = NUM_ANNOTATORS,
-        annotations= args.annotators
+        annotations= args.annotators,
+        emb_model = args.emb_model,
     )
 
     if args.mode == "scratch":

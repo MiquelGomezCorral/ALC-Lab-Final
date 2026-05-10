@@ -34,10 +34,11 @@ def train(
     multilabel:        bool  = False,   # ← NUEVO: activa modo multilabel
     annotators:       int   = 10,     # ← NUEVO: número de anotadores para one-hot
     annotations: bool = False,   # ← NUEVO: el modelo utiliza anotadores
+    emb_model: str = "qwen",  # ← NUEVO: modelo de embeddings a usar
 ) -> MultimodalModel:
     os.makedirs(save_dir, exist_ok=True)
-    json_path  = os.path.join(save_dir, f"{text_encoder_name}_{label_name}.json")
-    model_path = os.path.join(save_dir, f"{text_encoder_name}_{label_name}.pt")
+    json_path  = os.path.join(save_dir, f"{text_encoder_name}_{emb_model}_{label_name}.json")
+    model_path = os.path.join(save_dir, f"{text_encoder_name}_{emb_model}_{label_name}.pt")
 
     model = MultimodalModel(
         model_name=text_encoder_name, eeg_dim=eeg_dim, et_hr_dim=et_hr_dim,

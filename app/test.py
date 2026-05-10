@@ -198,7 +198,10 @@ def main():
         else:
             default_test = os.path.join(DATA_DIR, "val.json")
     else:  # test
-        default_test = os.path.join(DATA_DIR, "test.json")
+        if args.label_name == "task3":
+            default_test = os.path.join(DATA_DIR, "test_3.json")
+        else:
+            default_test = os.path.join(DATA_DIR, "test.json")
 
     test_path = args.test_file if args.test_file else default_test
     test_data = load_json(test_path)

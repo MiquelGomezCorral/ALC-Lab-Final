@@ -168,9 +168,8 @@ class MemeDataset(Dataset):
         eeg_seq,   eeg_mask   = pad_subjects(eeg_s, self.max_subjects, self.eeg_dim)
         et_hr_seq, et_hr_mask = pad_subjects(et_hr, self.max_subjects, self.et_hr_dim)
 
-        annotators = torch.zeros(self.annotators)
-        if not self.multilabel:
-            annotators = self._to_onehot(sample["annotators"], self.annotators)
+        # annotators = torch.zeros(self.annotators)
+        annotators = self._to_onehot(sample["annotators"], self.annotators)
 
         # ── 3. Soft label ─────────────────────────────────────────────────
         if self.training:
