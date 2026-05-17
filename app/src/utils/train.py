@@ -35,10 +35,15 @@ def train(
     annotators:       int   = 10,     # ← NUEVO: número de anotadores para one-hot
     annotations: bool = False,   # ← NUEVO: el modelo utiliza anotadores
     emb_model: str = "qwen",  # ← NUEVO: modelo de embeddings a usar
+    phisio: bool = True,  # ← NUEVO: si False, ignora ramas fisiológicas (EEG, ET/HR)
 ) -> MultimodalModel:
     os.makedirs(save_dir, exist_ok=True)
-    json_path  = os.path.join(save_dir, f"{text_encoder_name}_{emb_model}_{label_name}.json")
-    model_path = os.path.join(save_dir, f"{text_encoder_name}_{emb_model}_{label_name}.pt")
+    if phisio:
+        json_path  = os.path.join(save_dir, f"{text_encoder_name}_{emb_model}_{label_name}.json")
+        model_path = os.path.join(save_dir, f"{text_encoder_name}_{emb_model}_{label_name}.pt")
+    else:
+        json_path  = os.path.join(save_dir, f"{text_encoder_name}_{emb_model}_{label_name}_text_only.json")
+        model_path = os.path.join(save_dir, f"{text_encoder_name}_{emb_model}_{label_name}_text_only.pt")
 
     model = MultimodalModel(
         model_name=text_encoder_name, eeg_dim=eeg_dim, et_hr_dim=et_hr_dim,
@@ -46,6 +51,7 @@ def train(
         text_dim=768, num_heads=8, freeze_backbone=True,
         seg_lengths=seg_lengths, num_classes=num_classes,
         num_annotators=annotators, annotation=annotations,
+        phisio=phisio
     ).to(device)
 
     if multilabel:
@@ -147,7 +153,7 @@ def train(
             pbar.set_postfix({"loss": f"{loss.item():.4f}"})
         scheduler1.step()
 
-        val_loss, auc, f1, f1_yes = evaluate(
+        val_loss, auc, f1, f1_yes, ce = evaluate(
             model, criterion, val_loader, device, json_path,
             multilabel=multilabel
         )
@@ -195,7 +201,7 @@ def train(
             pbar.set_postfix({"loss": f"{loss.item():.4f}"})
         scheduler2.step()
 
-        val_loss, auc, f1, f1_yes = evaluate(
+        val_loss, auc, f1, f1_yes, ce = evaluate(
             model, criterion, val_loader, device, json_path,
             multilabel=multilabel
         )

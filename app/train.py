@@ -93,6 +93,12 @@ def parse_args():
         help="Modelo de embeddings a usar (default: qwen).",
     )
 
+    parser.add_argument(
+        "--not_phisio",
+        action="store_true",
+        help="Si se activa, el modelo no utiliza ramas fisiológicas (EEG, ET/HR). Si no, solo texto.",
+    )
+
     return parser.parse_args()
 
 
@@ -123,6 +129,10 @@ def main():
     print(f"   Num clases:   {args.num_classes}")
     print(f"   Campo label:  {args.label_name}")
     print(f"   Balanceado:   {args.balanced}")
+    print(f"   Multilabel:   {args.multilabel}")
+    print(f"   Anotadores:   {args.annotators}")
+    print(f"   Embeddings:   {args.emb_model}")
+    print(f"   Fisiología:    {not args.not_phisio}")
     if args.mode == "transfer":
         print(f"   Checkpoint:   {args.checkpoint}")
 
@@ -211,6 +221,7 @@ def main():
         annotators = NUM_ANNOTATORS,
         annotations= args.annotators,
         emb_model = args.emb_model,
+        phisio = not args.not_phisio
     )
 
     if args.mode == "scratch":

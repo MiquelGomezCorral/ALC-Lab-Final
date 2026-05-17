@@ -120,6 +120,12 @@ def parse_args():
         action="store_true",
         help="El modelo utiliza anotadores.",
     )
+
+    parser.add_argument(
+        "--not_phisio",
+        action="store_true",
+        help="Si se activa, el modelo no utiliza ramas fisiológicas (EEG, ET/HR). Si no, solo texto.",
+    )
     return parser.parse_args()
 
 
@@ -151,6 +157,7 @@ def main():
     print(f"   Multilabel:  {args.multilabel}")
     print(f"   Anotadores:  {args.annotators}")
     print(f"   Checkpoint:  {args.checkpoint}")
+    print(f" Phisio:       {'No' if args.not_phisio else 'Sí'}")
 
     # ── Tokenizer ─────────────────────────────────────────────────────────────
     tokenizer = AutoTokenizer.from_pretrained(args.text_encoder)
@@ -247,6 +254,7 @@ def main():
         num_classes=args.num_classes,
         num_annotators=NUM_ANNOTATORS,
         annotation=args.annotators,
+        phisio= not args.not_phisio,
     ).to(device)
 
     model.load_state_dict(torch.load(args.checkpoint, map_location=device))
@@ -266,7 +274,7 @@ def main():
             encoder_short = args.text_encoder.replace("/", "-")
             save_path = os.path.join(DATA_DIR, f"{encoder_short}_{args.label_name}_val.json")
 
-        test_loss, test_auc, test_f1, test_f1_yes = evaluate(
+        test_loss, test_auc, test_f1, test_f1_yes, ce = evaluate(
             model, criterion, test_loader, device,
             save_path=save_path,
             multilabel=args.multilabel,
@@ -279,6 +287,7 @@ def main():
         print(f"  AUC    : {test_auc:.4f}")
         print(f"  F1     : {test_f1:.4f}")
         print(f"  F1_yes : {test_f1_yes:.4f}")
+        print(f"  CE: {ce:.4f}")
         print("═" * 50)
         print(f"  Predicciones guardadas → {save_path}")
 

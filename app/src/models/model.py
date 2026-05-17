@@ -154,9 +154,12 @@ class MultimodalModel(nn.Module):
         num_classes:     int   = 2,
         num_annotators: int = 10,
         annotation: bool = False, 
+        phisio: bool = True
     ):
         super().__init__()
-        multimodal_dim = text_dim * 3   # 2304
+        self.phisio = phisio
+
+        multimodal_dim = text_dim * 3  if self.phisio else text_dim
 
         self.text_encoder  = TextEncoder(model_name=model_name, freeze=freeze_backbone)
         self.text_gate     = GatedTextFusion(text_dim=text_dim, seg_lengths=seg_lengths, dropout=dropout)
@@ -213,7 +216,10 @@ class MultimodalModel(nn.Module):
         eeg_ctx    = self.eeg_branch(eeg,   text_seq, eeg_mask,  text_key_padding_mask)
         et_hr_ctx  = self.et_hr_branch(et_hr, text_seq, et_hr_mask, text_key_padding_mask)
 
-        multimodal_raw = torch.cat([text_fused, eeg_ctx, et_hr_ctx], dim=1)  # [B, 2304]
+        if self.phisio:
+            multimodal_raw = torch.cat([text_fused, eeg_ctx, et_hr_ctx], dim=1)  # [B, 2304]
+        else:
+            multimodal_raw = text_fused
 
         # Qwen refina en el espacio completo — devuelve [B, 2304]
         fused = self.qwen_fuse(multimodal_raw, qwen_emb)

@@ -5,11 +5,12 @@ import torch
 import torch.nn as nn
 from sklearn.metrics import roc_auc_score, f1_score
 
+from scipy.special import rel_entr
 
-def evaluate(model, criterion, loader, device, 
+def evaluate(model, criterion, loader, device,
              save_path=None, multilabel=False):
     """
-    Evalúa sobre `loader` y devuelve (val_loss, auc, f1_macro, f1_class1).
+    Evalúa sobre `loader` y devuelve (val_loss, auc, f1_macro, f1_class1, ce_soft).
 
     Soporta clasificación multiclase y multilabel.
 
@@ -18,6 +19,7 @@ def evaluate(model, criterion, loader, device,
     - Predicción: clase con mayor probabilidad tras softmax.
     - AUC: binario estándar si num_classes=2, OvR macro-averaged si >2.
     - f1_class1: F1 de la clase 1 en binario; f1_macro en multiclase.
+    - ce_soft: cross-entropy entre gold soft y probs del modelo.
 
     Multilabel:
     - Labels: vector binario desde batch["label"].
@@ -27,7 +29,7 @@ def evaluate(model, criterion, loader, device,
     - Pérdida calculada sobre batch["label"] con BCEWithLogitsLoss.
     """
     model.eval()
-    all_probs, all_labels, total_loss = [], [], 0.0
+    all_probs, all_labels, all_gold_soft, total_loss = [], [], [], 0.0
 
     with torch.no_grad():
         for batch in loader:
@@ -42,30 +44,37 @@ def evaluate(model, criterion, loader, device,
                 annotator_ids  = batch["annotators"].to(device),
             )
 
-            labels = batch["label"].float().to(device)   # ya es [B, num_classes] one-hot
+            labels = batch["label"].float().to(device)   # [B, C] soft
             total_loss += criterion(logits, labels).item()
-            probs = torch.sigmoid(logits).cpu().numpy() if multilabel else torch.softmax(logits, dim=1).cpu().numpy()
+
             if multilabel:
-                all_labels.extend(labels.cpu().numpy())  # [B, C]
+                probs = torch.sigmoid(logits).cpu().numpy()
+                all_labels.extend(labels.cpu().numpy())          # [B, C]
             else:
-                all_labels.extend(batch["label"].argmax(dim=1).cpu().numpy())  # [B]
+                probs = torch.softmax(logits, dim=1).cpu().numpy()
+                all_labels.extend(batch["label"].argmax(dim=1).cpu().numpy())  # [B] hard para F1
+
             all_probs.extend(probs)
+            all_gold_soft.extend(batch["label"].float().cpu().numpy())  # [B, C] soft siempre
 
-    all_probs  = np.array(all_probs)   # [N, num_classes]
-    all_labels = np.array(all_labels)  # [N] o [N, num_classes] en multilabel
-    num_classes = all_probs.shape[1]
+    all_probs     = np.array(all_probs)      # [N, C]
+    all_labels    = np.array(all_labels)     # [N] o [N, C] en multilabel
+    all_gold_soft = np.array(all_gold_soft)  # [N, C] siempre
+    num_classes   = all_probs.shape[1]
 
+    # ── CE soft ───────────────────────────────────────────────────────────
+    eps = 1e-9
+    ce_soft = -np.mean(np.sum(all_gold_soft * np.log(all_probs + eps), axis=1))
+
+    # ── Métricas hard ─────────────────────────────────────────────────────
     if multilabel:
-        preds = (all_probs >= 0.5).astype(int)   # [N, num_classes]
-
-        # AUC por clase, macro-averaged (requiere que cada clase tenga ambos valores)
-        auc = roc_auc_score(all_labels, all_probs, average="macro")
-
+        preds = (all_probs >= 0.5).astype(int)
+        auc       = roc_auc_score(all_labels, all_probs, average="macro")
         f1_macro  = f1_score(all_labels, preds, average="macro")
-        f1_class1 = f1_macro   # no hay una única clase positiva relevante
+        f1_class1 = f1_macro
 
     else:
-        preds = all_probs.argmax(axis=1)   # [N]
+        preds = all_probs.argmax(axis=1)
 
         if num_classes == 2:
             auc = roc_auc_score(all_labels, all_probs[:, 1])
@@ -87,9 +96,10 @@ def evaluate(model, criterion, loader, device,
     if save_path is not None:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         new_metrics = {
-            "auc":       round(float(auc),        4),
-            "f1_macro":  round(float(f1_macro),   4),
-            "f1_class1": round(float(f1_class1),  4),
+            "auc":       round(float(auc),       4),
+            "f1_macro":  round(float(f1_macro),  4),
+            "f1_class1": round(float(f1_class1), 4),
+            "ce_soft":   round(float(ce_soft),   4),
         }
         save = True
         if os.path.exists(save_path):
@@ -104,13 +114,14 @@ def evaluate(model, criterion, loader, device,
                             "label": l.tolist() if multilabel else int(l),
                             "pred":  p.tolist() if multilabel else int(p),
                             "probs": [round(float(pr), 4) for pr in prob_row],
+                            "gold_soft": [round(float(gs), 4) for gs in gs_row],
                         }
-                        for l, p, prob_row in zip(all_labels, preds, all_probs)
+                        for l, p, prob_row, gs_row in zip(all_labels, preds, all_probs, all_gold_soft)
                     ],
                     "metrics": new_metrics,
                 }, f, indent=2)
 
-    return total_loss / len(loader), auc, f1_macro, f1_class1
+    return total_loss / len(loader), auc, f1_macro, f1_class1, ce_soft
 
 
 
