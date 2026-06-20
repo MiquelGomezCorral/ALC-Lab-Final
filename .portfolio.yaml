@@ -1,0 +1,17 @@
+title:
+  en: Multimodal Sexism Detection in Memes — EXIST 2026 Lab (Task 3)
+  es: Detección Multimodal de Sexismo en Memes — EXIST 2026 Lab (Task 3)
+finished: finished
+descriptionShort:
+  en: Multimodal model fusing text (XLM-RoBERTa), physiological signals (EEG, eye tracking, heart rate), and video embeddings (Qwen VL) to classify TikTok memes as sexist or not. Uses CrossModalAttention, GatedTextFusion, and SoftLabelLoss (KLDiv over annotator distributions). Achieves 80.6% macro F1.
+  es: Modelo multimodal que fusiona texto (XLM-RoBERTa), datos fisiológicos (EEG, eye tracking, ritmo cardíaco) y embeddings de video (Qwen VL) para clasificar si un TikTok contiene contenido sexista. Usa CrossModalAttention, GatedTextFusion y SoftLabelLoss (KLDiv sobre distribuciones de anotadores). Logra 80.6% F1 macro.
+descriptionLong:
+  en: |
+    Project for the EXIST 2026 Lab competition (sEXism Identification in Social neTworks), Task 3: sexism detection in TikTok videos. The model uses a multimodal architecture with XLM-RoBERTa as text encoder (OCR, transcription, Qwen reasoning), two CrossModalAttention branches for physiological signals (EEG and ET+HR separately), and QwenGatedFusion to integrate video embeddings (Qwen3-VL 8B). Training is two-phase: frozen backbone (only gate, branches, and classifier trained) followed by full fine-tune with layer-wise discriminative learning rates. Loss uses KLDiv over annotator distributions (SoftLabelLoss) instead of binary hard labels. Includes text dropout, early stopping, and CosineAnnealing. Dataset contains ~2500 videos with multi-subject physiological annotations.
+  es: |
+    Proyecto para la competición EXIST 2026 Lab (sEXism Identification in Social neTworks), Task 3: detección de sexismo en vídeos de TikTok. El modelo usa una arquitectura multimodal con XLM-RoBERTa como encoder de texto (OCR, transcripción, razonamiento de Qwen), dos ramas CrossModalAttention para señales fisiológicas (EEG por un lado, Eye Tracking + Heart Rate por otro), y QwenGatedFusion para integrar embeddings de vídeo (Qwen3-VL 8B). El entrenamiento es en dos fases: backbone congelado (solo gate, ramas y clasificador) y fine-tune con learning rates discriminativos por capa del encoder. La pérdida usa KLDiv sobre distribuciones de anotadores (SoftLabelLoss) en lugar de hard labels binarias. Incluye text dropout, early stopping y CosineAnnealing. El dataset contiene ~2500 vídeos con anotaciones fisiológicas de múltiples sujetos.
+technologies: [python, pytorch, jupyter, huggingface, sklearn, numpy]
+tags: [class, competition]
+slug: ALC-Lab-Final
+order: 84
+featured: false
