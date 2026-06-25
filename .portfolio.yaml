@@ -12,6 +12,10 @@ descriptionLong:
     Proyecto para la competición EXIST 2026 Lab (sEXism Identification in Social neTworks), Task 3: detección de sexismo en vídeos de TikTok. El modelo usa una arquitectura multimodal con XLM-RoBERTa como encoder de texto (OCR, transcripción, razonamiento de Qwen), dos ramas CrossModalAttention para señales fisiológicas (EEG por un lado, Eye Tracking + Heart Rate por otro), y QwenGatedFusion para integrar embeddings de vídeo (Qwen3-VL 8B). El entrenamiento es en dos fases: backbone congelado (solo gate, ramas y clasificador) y fine-tune con learning rates discriminativos por capa del encoder. La pérdida usa KLDiv sobre distribuciones de anotadores (SoftLabelLoss) en lugar de hard labels binarias. Incluye text dropout, early stopping y CosineAnnealing. El dataset contiene ~2500 vídeos con anotaciones fisiológicas de múltiples sujetos.
 technologies: [python, pytorch, jupyter, huggingface, sklearn, numpy]
 tags: [class, competition]
+keywords:
+  en: [sexism detection, hate speech, multimodal classification, TikTok moderation, EXIST challenge, text-video fusion, EEG signals, eye tracking, social network analysis, NLP competition, annotation distribution, soft labels]
+  es: [detección de sexismo, discurso de odio, clasificación multimodal, moderación de TikTok, reto EXIST, fusión texto-vídeo, señales EEG, seguimiento ocular, redes sociales, competición NLP, anotación blanda]
 slug: ALC-Lab-Final
 order: 84
 featured: false
+
