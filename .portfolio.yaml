@@ -1,6 +1,6 @@
 title:
-  en: Multimodal Sexism Detection in Memes — EXIST 2026 Lab (Task 3)
-  es: Detección Multimodal de Sexismo en Memes — EXIST 2026 Lab (Task 3)
+  en: Multimodal Sexism Detection in Memes
+  es: Detección Multimodal de Sexismo en Memes
 finished: finished
 descriptionShort:
   en: Multimodal model fusing text (XLM-RoBERTa), physiological signals (EEG, eye tracking, heart rate), and video embeddings (Qwen VL) to classify TikTok memes as sexist or not. Uses CrossModalAttention, GatedTextFusion, and SoftLabelLoss (KLDiv over annotator distributions). Achieves 80.6% macro F1.
@@ -18,4 +18,5 @@ keywords:
 slug: ALC-Lab-Final
 order: 84
 featured: false
+
 
