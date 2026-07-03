@@ -101,3 +101,16 @@ Link: Añade aquí el link a tu dataset
 
 
 *Matenido por [MiquelGomezCorral](https://miquelgc.net)*
+
+---
+
+<!-- portfolio-gallery:start -->
+## Gallery
+
+<p align="center">
+  <img src="readme-images/removing_biosignals_169.png" width="48%" />
+  <img src="readme-images/thumb_nail_169.png" width="48%" />
+  <img src="readme-images/architecture_169.png" width="48%" />
+  <img src="readme-images/final_results_169.png" width="48%" />
+</p>
+<!-- portfolio-gallery:end -->
