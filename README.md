@@ -108,9 +108,11 @@ Link: Añade aquí el link a tu dataset
 ## Gallery
 
 <p align="center">
-  <img src="readme-images/removing_biosignals_169.png" width="48%" />
-  <img src="readme-images/thumb_nail_169.png" width="48%" />
-  <img src="readme-images/architecture_169.png" width="48%" />
-  <img src="readme-images/final_results_169.png" width="48%" />
+  <img src="readme-images/thumb_nail_169.png" alt="thumb nail" width="48%" />
+  <img src="readme-images/ablation_study_169.png" alt="ablation study" width="48%" />
+  <img src="readme-images/architecture_169.png" alt="architecture" width="48%" />
+  <img src="readme-images/final_results_169.png" alt="final results" width="48%" />
+  <img src="readme-images/keyframe_example.png_169.png" alt="keyframe example.png" width="48%" />
+  <img src="readme-images/removing_biosignals_169.png" alt="removing biosignals" width="48%" />
 </p>
 <!-- portfolio-gallery:end -->
